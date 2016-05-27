@@ -110,6 +110,9 @@ def unpack(src_name):
     return des
 
 def pack(src_name):
+    if src_name.endswith("/"):
+        src_name = src_name[:len(src_name) - 1]
+
     des = os.path.splitext(src_name)[0] + "_repacked.apk"
     if os.path.isfile(des):
         os.remove(des)
@@ -127,33 +130,29 @@ def __main__():
         return
 
     if len(sys.argv) <= 2:
-        print("apkex\n\tu:unpack [src]\n\tp:pack [src]\n\ts:sign [src]\n\ta:align [src]\n")
+        print("apkex\n\tu:unpack [src]\n\tp:pack [src]\n")
         return
 
     if len(sys.argv) > 2:
         cmd = sys.argv[1]
         path = sys.argv[2]
 
+        if not str(path).startswith("/"):
+            path = os.path.join(os.getcwd(), path)
+
         if cmd == "u":
             tmp = unpack(path)
             print("\n\nunpack to: " + tmp)
         elif cmd == "p":
-            tmp = pack(path)
-            print("\n\npack to: " + tmp)
-            tmp = sign(tmp)
-            print("\n\nsign to: " + tmp)
-            tmp = align(tmp)
-            print("\n\nalign to: " + tmp)
-        elif cmd == "s":
-            tmp = sign(path)
-            print("\n\nsign to: " + tmp)
-        elif cmd == "a":
-            tmp = align(path)
-            print("\n\nalign to: " + tmp)
-        elif cmd == "ps":
-            tmp = pack(path)
-            print("\n\npack to: " + tmp)
+            packed = pack(path)
+            print("\n\npack to: " + packed)
+            signed = sign(packed)
+            print("\n\nsign to: " + signed)
+            aligned = align(signed)
+            print("\n\nalign to: " + aligned)
+            os.remove(packed)
+            os.remove(signed)
         else:
-            print("apkex\n\tu:unpack [src]\n\tp:pack [src]\n\ts:sign [src]\n\ta:align [src]\n")
+            print("apkex\n\tu:unpack [src]\n\tp:pack [src]\n")
 
 __main__()
