@@ -186,7 +186,7 @@ def __main__():
         else:
             idx += 1
 
-    if cfg == "" or path == "":
+    if path == "":
         print("using apkex "
               "\n\t-c [u unpack; p pack] "
               "\n\t-f [file path] "
@@ -197,13 +197,21 @@ def __main__():
     if not os.path.isabs(path):
         path = os.path.join(os.getcwd(), path)
 
-    if not os.path.isabs(cfg):
-        cfg = os.path.join(os.getcwd(), cfg)
-
     if cmd == "u":
         tmp = unpack(path)
         print("\n\nunpack to: " + tmp)
     elif cmd == "p":
+        if cfg == "":
+            print("using apkex "
+                  "\n\t-c [u unpack; p pack] "
+                  "\n\t-f [file path] "
+                  "\n\t-g [config file path] "
+                  "\n\tto run with apktool")
+            return
+
+        if not os.path.isabs(cfg):
+            cfg = os.path.join(os.getcwd(), cfg)
+
         packed = pack(path)
         print("\n\npack to: " + packed)
         signed = sign(packed, cfg)
