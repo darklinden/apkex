@@ -115,7 +115,7 @@ def sign(src_name, cfg_path=""):
     command += " -sigalg MD5withRSA"
     command += " -storepass '" + store_pwd + "'"
     command += " -keypass '" + key_pwd + "'"
-    command += " -signedjar " + des_name
+    command += " -signedjar '" + des_name + "'"
     command += " '" + src_name + "' '" + alias_name + "'"
 
     print("exec: " + command)
