@@ -5,6 +5,37 @@ import json
 import shutil
 import subprocess
 
+G_ADB = ""
+G_ZIPALIGN = ""
+
+
+def init_tools():
+    global G_ADB
+    global G_ZIPALIGN
+
+    G_ADB = run_cmd(["which", "adb"])
+
+    G_ADB = G_ADB.strip()
+
+    G_ZIPALIGN = run_cmd(["which", "zipalign"])
+
+    if len(G_ZIPALIGN.strip()) > 0:
+        return
+
+    platform_tools_path = os.path.dirname(G_ADB)
+    sdk_path = os.path.dirname(platform_tools_path)
+    build_tools_path = os.path.join(sdk_path, "build-tools")
+    build_tools_list = os.listdir(build_tools_path)
+    build_tools_list.sort()
+
+    last_build_tool = os.path.join(build_tools_path, build_tools_list[-1])
+
+    if os.path.isdir(last_build_tool):
+        G_ZIPALIGN = os.path.join(last_build_tool, "zipalign")
+
+        # os.system(G_ADB + " kill-server")
+
+
 def run_cmd(cmd):
     print("run cmd: " + " ".join(cmd))
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -12,6 +43,7 @@ def run_cmd(cmd):
     if err:
         print(err)
     return out
+
 
 def self_install(file, des):
     file_path = os.path.realpath(file)
@@ -35,6 +67,7 @@ def self_install(file, des):
     shutil.copy(file_path, to_path)
     run_cmd(['chmod', 'a+x', to_path])
 
+
 def read_json(file_path):
     f = open(file_path, mode='rb')
     content = f.read()
@@ -42,14 +75,14 @@ def read_json(file_path):
 
     return json.loads(content)
 
-def read_config():
-    home = os.path.expanduser("~")
-    conf_file_path = os.path.join(home, ".apkcfg")
+
+def read_config(conf_file_path):
     if os.path.isfile(conf_file_path):
         jo = read_json(conf_file_path)
         return jo
     else:
         return {"key_path": "", "alias_name": "", "store_pwd": "", "key_pwd": ""}
+
 
 def param_exists(param):
     if param:
@@ -58,46 +91,45 @@ def param_exists(param):
 
     return False
 
-def sign(src_name, key_path = "", alias_name = "", store_pwd = "", key_pwd = ""):
 
+def sign(src_name, cfg_path=""):
     if not param_exists(src_name):
         print("no src name input, exit")
         return
 
-    conf = read_config()
+    conf = read_config(cfg_path)
     des_name = os.path.splitext(src_name)[0] + "_resigned.apk"
 
-    if not param_exists(key_path):
-        key_path = conf["key_path"]
+    key_path = conf["key_path"]
 
-    if not param_exists(alias_name):
-        alias_name = conf["alias_name"]
+    if not os.path.isabs(key_path):
+        key_path = os.path.join(os.getcwd(), key_path)
 
-    if not param_exists(store_pwd):
-        store_pwd = conf["store_pwd"]
-
-    if not param_exists(key_pwd):
-        key_pwd = conf["key_pwd"]
+    alias_name = conf["alias_name"]
+    store_pwd = conf["store_pwd"]
+    key_pwd = conf["key_pwd"]
 
     command = "jarsigner -verbose"
-    command += " -keystore " + key_path
+    command += " -keystore '" + key_path + "'"
     command += " -digestalg SHA1"
     command += " -sigalg MD5withRSA"
-    command += " -storepass " + store_pwd
-    command += " -keypass " + key_pwd
+    command += " -storepass '" + store_pwd + "'"
+    command += " -keypass '" + key_pwd + "'"
     command += " -signedjar " + des_name
-    command += " " + src_name + " " + alias_name
+    command += " '" + src_name + "' '" + alias_name + "'"
 
     print("exec: " + command)
     os.system(command)
     return des_name
+
 
 def align(src_name):
     des_name = os.path.splitext(src_name)[0] + "_aligned.apk"
-    command = "zipalign -f -v 4 " + src_name + " " + des_name
+    command = G_ZIPALIGN + " -f -v 4 " + src_name + " " + des_name
     print("exec: " + command)
     os.system(command)
     return des_name
+
 
 def unpack(src_name):
     des = os.path.splitext(src_name)[0]
@@ -108,6 +140,7 @@ def unpack(src_name):
     print("exec: " + command)
     os.system(command)
     return des
+
 
 def pack(src_name):
     if src_name.endswith("/"):
@@ -122,37 +155,69 @@ def pack(src_name):
     os.system(command)
     return des
 
+
 def __main__():
+    init_tools()
 
     # self_install
     if len(sys.argv) > 1 and sys.argv[1] == 'install':
         self_install("apkex.py", "/usr/local/bin")
         return
 
-    if len(sys.argv) <= 2:
-        print("apkex\n\tu:unpack [src]\n\tp:pack [src]\n")
+    argLen = len(sys.argv)
+
+    cmd = ""
+    cfg = ""
+    path = ""
+
+    idx = 1
+    while idx < argLen:
+        cmd_s = sys.argv[idx]
+        if cmd_s[0] == "-":
+            c = cmd_s[1:]
+            v = sys.argv[idx + 1]
+            if c == "c":
+                cmd = v
+            elif c == "g":
+                cfg = v
+            elif c == "f":
+                path = v
+            idx += 2
+        else:
+            idx += 1
+
+    if cfg == "" or path == "":
+        print("using apkex "
+              "\n\t-c [u unpack; p pack] "
+              "\n\t-f [file path] "
+              "\n\t-g [config file path] "
+              "\n\tto run with apktool")
         return
 
-    if len(sys.argv) > 2:
-        cmd = sys.argv[1]
-        path = sys.argv[2]
+    if not os.path.isabs(path):
+        path = os.path.join(os.getcwd(), path)
 
-        if not str(path).startswith("/"):
-            path = os.path.join(os.getcwd(), path)
+    if not os.path.isabs(cfg):
+        cfg = os.path.join(os.getcwd(), cfg)
 
-        if cmd == "u":
-            tmp = unpack(path)
-            print("\n\nunpack to: " + tmp)
-        elif cmd == "p":
-            packed = pack(path)
-            print("\n\npack to: " + packed)
-            signed = sign(packed)
-            print("\n\nsign to: " + signed)
-            aligned = align(signed)
-            print("\n\nalign to: " + aligned)
-            os.remove(packed)
-            os.remove(signed)
-        else:
-            print("apkex\n\tu:unpack [src]\n\tp:pack [src]\n")
+    if cmd == "u":
+        tmp = unpack(path)
+        print("\n\nunpack to: " + tmp)
+    elif cmd == "p":
+        packed = pack(path)
+        print("\n\npack to: " + packed)
+        signed = sign(packed, cfg)
+        print("\n\nsign to: " + signed)
+        aligned = align(signed)
+        print("\n\nalign to: " + aligned)
+        os.remove(packed)
+        os.remove(signed)
+    else:
+        print("using apkex "
+              "\n\t-c [u unpack; p pack] "
+              "\n\t-f [file path] "
+              "\n\t-g [config file path] "
+              "\n\tto run with apktool")
+
 
 __main__()
