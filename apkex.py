@@ -94,19 +94,14 @@ def param_exists(param):
     return False
 
 
-def sign(src_name, cfg_path=""):
+def sign(src_name, conf):
     if not param_exists(src_name):
         print("no src name input, exit")
         return
 
-    conf = read_config(cfg_path)
     des_name = os.path.splitext(src_name)[0] + "_resigned.apk"
 
     key_path = conf["key_path"]
-
-    if not os.path.isabs(key_path):
-        key_path = os.path.join(os.getcwd(), key_path)
-
     alias_name = conf["alias_name"]
     store_pwd = conf["store_pwd"]
     key_pwd = conf["key_pwd"]
@@ -220,9 +215,16 @@ def __main__():
         if not os.path.isabs(cfg):
             cfg = os.path.join(os.getcwd(), cfg)
 
+        cfg_folder = os.path.dirname(cfg)
+
+        conf = read_config(cfg)
+
+        if not os.path.isabs(conf["key_path"]):
+            conf["key_path"] = os.path.join(cfg_folder, conf["key_path"])
+
         packed = pack(path)
         print("\n\npack to: " + packed)
-        signed = sign(packed, cfg)
+        signed = sign(packed, conf)
         print("\n\nsign to: " + signed)
         aligned = align(signed)
         print("\n\nalign to: " + aligned)
