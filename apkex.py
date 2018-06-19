@@ -7,11 +7,13 @@ import subprocess
 
 G_ADB = ""
 G_ZIPALIGN = ""
+G_apksigner = ""
 
 
 def init_tools():
     global G_ADB
     global G_ZIPALIGN
+    global G_apksigner
 
     G_ADB = run_cmd(["which", "adb"])
 
@@ -32,7 +34,7 @@ def init_tools():
 
     if os.path.isdir(last_build_tool):
         G_ZIPALIGN = os.path.join(last_build_tool, "zipalign")
-
+        G_apksigner = os.path.join(last_build_tool, "apksigner")
         # os.system(G_ADB + " kill-server")
 
 
@@ -142,6 +144,12 @@ def unpack(src_name):
     return des
 
 
+def sign_verify(src_name):
+    command = G_apksigner + " verify -v " + src_name
+    print("exec: " + command)
+    os.system(command)
+
+
 def pack(src_name):
     if src_name.endswith("/"):
         src_name = src_name[:len(src_name) - 1]
@@ -188,7 +196,7 @@ def __main__():
 
     if path == "":
         print("using apkex "
-              "\n\t-c [u unpack; p pack] "
+              "\n\t-c [u unpack; p pack; sv verify sign] "
               "\n\t-f [file path] "
               "\n\t-g [config file path] "
               "\n\tto run with apktool")
@@ -203,7 +211,7 @@ def __main__():
     elif cmd == "p":
         if cfg == "":
             print("using apkex "
-                  "\n\t-c [u unpack; p pack] "
+                  "\n\t-c [u unpack; p pack; sv verify sign] "
                   "\n\t-f [file path] "
                   "\n\t-g [config file path] "
                   "\n\tto run with apktool")
@@ -220,9 +228,11 @@ def __main__():
         print("\n\nalign to: " + aligned)
         os.remove(packed)
         os.remove(signed)
+    elif cmd == "sv":
+        sign_verify(path)
     else:
         print("using apkex "
-              "\n\t-c [u unpack; p pack] "
+              "\n\t-c [u unpack; p pack; sv verify sign] "
               "\n\t-f [file path] "
               "\n\t-g [config file path] "
               "\n\tto run with apktool")
