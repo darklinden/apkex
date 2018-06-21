@@ -159,6 +159,24 @@ def pack(src_name):
     return des
 
 
+def pack_unity(src_name):
+    if src_name.endswith("/"):
+        src_name = src_name[:len(src_name) - 1]
+
+    log_path = os.path.join(os.path.expanduser("~"), "Library/Logs/Unity/Editor.log")
+    if os.path.isfile(log_path):
+        os.remove(log_path)
+
+    command = "/Applications/Unity/Unity.app/Contents/MacOS/Unity -projectPath " + src_name \
+              + " -batchmode -executeMethod PerformBuild.BuildAndroid -quit"
+    print("exec: " + command)
+    os.system(command)
+
+    f = open(log_path, mode='rb')
+    print (f.read())
+    f.close()
+
+
 def __main__():
     init_tools()
 
@@ -191,7 +209,7 @@ def __main__():
 
     if path == "":
         print("using apkex "
-              "\n\t-c [u unpack; p pack; sv verify sign] "
+              "\n\t-c [u unpack; p pack; sv verify sign; unity build unity apk] "
               "\n\t-f [file path] "
               "\n\t-g [config file path] "
               "\n\tto run with apktool")
@@ -232,6 +250,8 @@ def __main__():
         os.remove(signed)
     elif cmd == "sv":
         sign_verify(path)
+    elif cmd == "unity":
+        pack_unity(path)
     else:
         print("using apkex "
               "\n\t-c [u unpack; p pack; sv verify sign] "
