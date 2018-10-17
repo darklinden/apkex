@@ -139,12 +139,6 @@ def unpack(src_name):
     return des
 
 
-def sign_verify(src_name):
-    command = G_apksigner + " verify -v " + src_name
-    print("exec: " + command)
-    os.system(command)
-
-
 def pack(src_name):
     if src_name.endswith("/"):
         src_name = src_name[:len(src_name) - 1]
@@ -209,7 +203,9 @@ def __main__():
 
     if path == "":
         print("using apkex "
-              "\n\t-c [u unpack; p pack; sv verify sign; unity build unity apk] "
+              "\n\t-c [u unpack;"
+              "\n\t\tp pack;"
+              "\n\t\ts print sign] "
               "\n\t-f [file path] "
               "\n\t-g [config file path] "
               "\n\tto run with apktool")
@@ -224,7 +220,9 @@ def __main__():
     elif cmd == "p":
         if cfg == "":
             print("using apkex "
-                  "\n\t-c [u unpack; p pack; sv verify sign] "
+                  "\n\t-c [u unpack;"
+                  "\n\t\tp pack;"
+                  "\n\t\ts print sign] "
                   "\n\t-f [file path] "
                   "\n\t-g [config file path] "
                   "\n\tto run with apktool")
@@ -248,13 +246,66 @@ def __main__():
         print("\n\nalign to: " + aligned)
         os.remove(packed)
         os.remove(signed)
-    elif cmd == "sv":
-        sign_verify(path)
+    elif cmd == "s":
+
+        command = G_apksigner + " verify -v " + path
+        print("exec: " + command)
+        os.system(command)
+
+        apk_results = run_cmd(['keytool', "-list", "-printcert", '-jarfile', path])
+        print ('check apk sign')
+        print (apk_results)
+
+        if not cfg == "":
+            if not os.path.isabs(cfg):
+                cfg = os.path.join(os.getcwd(), cfg)
+
+            cfg_folder = os.path.dirname(cfg)
+
+            conf = read_config(cfg)
+
+            if not os.path.isabs(conf["key_path"]):
+                conf["key_path"] = os.path.join(cfg_folder, conf["key_path"])
+
+            key_results = run_cmd(['keytool', "-list",
+                                   "-alias", conf["alias_name"],
+                                   '-keystore', conf["key_path"],
+                                   '-storepass', conf["store_pwd"],
+                                   '-keypass', conf["key_pwd"],
+                                   '-v'])
+            print ('check key sign')
+            print (key_results)
+
+            apk_lines = apk_results.split('\n')
+            for l in apk_lines:
+                if l.strip().startswith('MD5: '):
+                    apk_md5 = l.strip()
+                    break
+
+            key_lines = key_results.split('\n')
+            for l in key_lines:
+                if l.strip().startswith('MD5: '):
+                    key_md5 = l.strip()
+                    break
+
+            print ('apk md5:')
+            print (apk_md5)
+            print ('key md5:')
+            print (key_md5)
+
+            if apk_md5 == key_md5:
+                print ('check match')
+            else:
+                print ('check not match')
+
+
     elif cmd == "unity":
         pack_unity(path)
     else:
         print("using apkex "
-              "\n\t-c [u unpack; p pack; sv verify sign] "
+              "\n\t-c [u unpack;"
+              "\n\t\tp pack;"
+              "\n\t\ts print sign] "
               "\n\t-f [file path] "
               "\n\t-g [config file path] "
               "\n\tto run with apktool")
