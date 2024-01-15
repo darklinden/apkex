@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import sys
 import os
 import json
@@ -15,18 +15,21 @@ def init_tools():
     global G_ZIPALIGN
     global G_apksigner
 
-    G_ADB = run_cmd(["which", "adb"])
+    android_sdk_path = os.environ.get(
+        'ANDROID_HOME') or os.environ.get('ANDROID_SDK_ROOT')
+    if android_sdk_path is None or (not os.path.isdir(android_sdk_path)):
+        android_sdk_path = "/Users/Shared/Android/sdk"
+    if not os.path.isdir(android_sdk_path):
+        android_sdk_path = os.path.expanduser("~/Library/Android/sdk")
+    if not os.path.isdir(android_sdk_path):
+        print("ANDROID_HOME or ANDROID_SDK_ROOT not found")
+        exit(1)
 
-    G_ADB = G_ADB.strip()
+    platform_tools_path = os.path.join(android_sdk_path, "platform-tools")
 
-    G_ZIPALIGN = run_cmd(["which", "zipalign"])
+    G_ADB = os.path.join(platform_tools_path, "adb")
 
-    if len(G_ZIPALIGN.strip()) > 0:
-        return
-
-    platform_tools_path = os.path.dirname(G_ADB)
-    sdk_path = os.path.dirname(platform_tools_path)
-    build_tools_path = os.path.join(sdk_path, "build-tools")
+    build_tools_path = os.path.join(android_sdk_path, "build-tools")
     build_tools_list = os.listdir(build_tools_path)
     build_tools_list.sort()
 
@@ -157,7 +160,8 @@ def pack_unity(src_name):
     if src_name.endswith("/"):
         src_name = src_name[:len(src_name) - 1]
 
-    log_path = os.path.join(os.path.expanduser("~"), "Library/Logs/Unity/Editor.log")
+    log_path = os.path.join(os.path.expanduser(
+        "~"), "Library/Logs/Unity/Editor.log")
     if os.path.isfile(log_path):
         os.remove(log_path)
 
@@ -167,7 +171,7 @@ def pack_unity(src_name):
     os.system(command)
 
     f = open(log_path, mode='rb')
-    print (f.read())
+    print(f.read())
     f.close()
 
 
@@ -211,8 +215,8 @@ def __main__():
               "\n\tto run with apktool")
         return
 
-    if not os.path.isabs(path):
-        path = os.path.join(os.getcwd(), path)
+    # if not os.path.isabs(path):
+    #     path = os.path.join(os.getcwd(), path)
 
     if cmd == "u":
         tmp = unpack(path)
@@ -252,9 +256,10 @@ def __main__():
         print("exec: " + command)
         os.system(command)
 
-        apk_results = run_cmd(['keytool', "-list", "-printcert", '-jarfile', path])
-        print ('check apk sign')
-        print (apk_results)
+        apk_results = run_cmd(
+            ['keytool', "-list", "-printcert", '-jarfile', path])
+        print('check apk sign')
+        print(apk_results)
 
         if not cfg == "":
             if not os.path.isabs(cfg):
@@ -273,8 +278,8 @@ def __main__():
                                    '-storepass', conf["store_pwd"],
                                    '-keypass', conf["key_pwd"],
                                    '-v'])
-            print ('check key sign')
-            print (key_results)
+            print('check key sign')
+            print(key_results)
 
             apk_lines = apk_results.split('\n')
             for l in apk_lines:
@@ -288,16 +293,15 @@ def __main__():
                     key_md5 = l.strip()
                     break
 
-            print ('apk md5:')
-            print (apk_md5)
-            print ('key md5:')
-            print (key_md5)
+            print('apk md5:')
+            print(apk_md5)
+            print('key md5:')
+            print(key_md5)
 
             if apk_md5 == key_md5:
-                print ('check match')
+                print('check match')
             else:
-                print ('check not match')
-
+                print('check not match')
 
     elif cmd == "unity":
         pack_unity(path)
